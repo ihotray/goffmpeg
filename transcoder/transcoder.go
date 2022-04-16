@@ -19,11 +19,11 @@ import (
 
 // Transcoder Main struct
 type Transcoder struct {
-	stdErrPipe    io.ReadCloser
-	stdStdinPipe  io.WriteCloser
-	process       *exec.Cmd
-	mediafile     *models.Mediafile
-	configuration ffmpeg.Configuration
+	stdErrPipe         io.ReadCloser
+	stdStdinPipe       io.WriteCloser
+	process            *exec.Cmd
+	mediafile          *models.Mediafile
+	configuration      ffmpeg.Configuration
 	whiteListProtocols []string
 }
 
@@ -174,7 +174,7 @@ func (t *Transcoder) Initialize(inputPath string, outputPath string) error {
 		return errors.New("error on transcoder.Initialize: inputPath missing")
 	}
 
-	command := []string{"-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+	command := []string{"-rtsp_transport", "tcp", "-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
 
 	if t.whiteListProtocols != nil {
 		command = append([]string{"-protocol_whitelist", strings.Join(t.whiteListProtocols, ",")}, command...)
