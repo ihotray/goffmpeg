@@ -221,6 +221,7 @@ func (t *Transcoder) Run(progress bool) <-chan error {
 	}
 
 	proc := exec.Command(t.configuration.FfmpegBin, command...)
+
 	if progress {
 		errStream, err := proc.StderrPipe()
 		if err != nil {
