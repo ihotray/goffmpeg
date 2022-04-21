@@ -8,9 +8,11 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
+	"os/user"
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/xfrr/goffmpeg/ffmpeg"
 	"github.com/xfrr/goffmpeg/models"
@@ -174,7 +176,12 @@ func (t *Transcoder) Initialize(inputPath string, outputPath string) error {
 		return errors.New("error on transcoder.Initialize: inputPath missing")
 	}
 
-	command := []string{"-rtsp_transport", "tcp", "-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+	command := []string{"-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+
+	if strings.HasPrefix(inputPath, "rtsp://") {
+		command = []string{"-rtsp_transport", "tcp", "-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+
+	}
 
 	if t.whiteListProtocols != nil {
 		command = append([]string{"-protocol_whitelist", strings.Join(t.whiteListProtocols, ",")}, command...)
@@ -208,7 +215,7 @@ func (t *Transcoder) Initialize(inputPath string, outputPath string) error {
 }
 
 // Run Starts the transcoding process
-func (t *Transcoder) Run(progress bool) <-chan error {
+func (t *Transcoder) Run(username string, progress bool) <-chan error {
 	done := make(chan error)
 	command := t.GetCommand()
 
@@ -217,6 +224,35 @@ func (t *Transcoder) Run(progress bool) <-chan error {
 	}
 
 	proc := exec.Command(t.configuration.FfmpegBin, command...)
+
+	user, err := user.Lookup(username)
+	if err != nil {
+		fmt.Printf("invalid user %s\n", username)
+	}
+	// set process attr
+	// 获取用户 id
+	uid, err := strconv.ParseUint(user.Uid, 10, 32)
+	if err != nil {
+		fmt.Printf("invalid user %s\n", username)
+	}
+	// 获取用户组 id
+	gid, err := strconv.ParseUint(user.Gid, 10, 32)
+	if err != nil {
+		fmt.Printf("invalid user %s\n", username)
+	}
+	fmt.Printf("user: %s, uid: %d, gid: %d\n", username, uid, gid)
+	attr := proc.SysProcAttr
+	if attr == nil {
+		attr = &syscall.SysProcAttr{}
+	}
+	//设置进程执行用户
+	attr.Credential = &syscall.Credential{
+		Uid:         uint32(uid),
+		Gid:         uint32(gid),
+		NoSetGroups: true,
+	}
+	proc.SysProcAttr = attr
+
 	if progress {
 		errStream, err := proc.StderrPipe()
 		if err != nil {
