@@ -174,7 +174,11 @@ func (t *Transcoder) Initialize(inputPath string, outputPath string) error {
 		return errors.New("error on transcoder.Initialize: inputPath missing")
 	}
 
-	command := []string{"-rtsp_transport", "tcp", "-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+	command := []string{"-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+
+	if strings.HasPrefix(inputPath, "rtsp://") {
+		command = []string{"-rtsp_transport", "tcp", "-i", inputPath, "-print_format", "json", "-show_format", "-show_streams", "-show_error"}
+	}
 
 	if t.whiteListProtocols != nil {
 		command = append([]string{"-protocol_whitelist", strings.Join(t.whiteListProtocols, ",")}, command...)
